@@ -1,0 +1,39 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo test --locked
+      - run: cargo clippy --all-targets --locked -- -D warnings
+      - run: cargo build --release --locked
+      - uses: actions/upload-artifact@v4
+        with:
+          name: usage-widget
+          path: target/release/usage-widget.exe
+
+  # Push a tag like v0.2.0 to publish the exe on the repo's Releases page.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: usage-widget
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: usage-widget.exe
